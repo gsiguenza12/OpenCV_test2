@@ -9,9 +9,9 @@ https://www.geeksforgeeks.org/python-opencv-getting-and-setting-pixels/
 https://www.codesansar.com/numerical-methods/linear-interpolation-python.htm
 
 Gabriel Alfredo Siguenza, CS 5550 Digital Image Processing
-Hw 1
+Hw 2
 Dr. Amar Raheja
-Date: 09-13-2023
+Date: 10-09-2023
 """
 
 # Importing Libraries
