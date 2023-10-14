@@ -104,6 +104,36 @@ def nearest_neighbor_interpolation(image, zoom_factor_height, zoom_factor_width)
     return zoomed_image
 
 
+def compute_histogram(image, num_bins=256, intensity_range=(0, 256)):
+    # flattened 1D array
+    f_image = image.flatten()
+    histogram, _ = np.histogram(f_image, bins=num_bins, range=intensity_range)
+    return histogram
+
+
+def cumulate_histogram(histogram):
+    cumulative_histogram = np.csum(histogram)
+    return cumulative_histogram
+
+
+# In case of local histogram equalization, ask the user for the resolution of the square mask to be used.
+def histogram_equalization(image, mask):
+    height, width = image.shape
+    eq_image = np.zeros_like(image)
+
+    for i in range(0, height, mask):
+        for j in range(0, width, mask):
+            # local block
+            block = image[i:i + mask, j:j + mask]
+            # compute histogram
+            histogram = compute_histogram(block)
+            c_histogram = cumulate_histogram(histogram)
+
+            equalized_block = ((c_histogram[block] - c_histogram.min()) / (block.size - c_histogram.min()) * 255).astype(np.uint8)
+            eq_image[i:i+mask, j:j+mask] = equalized_block
+    return eq_image
+
+
 '''
 1.
 Vary the spatial resolution of this image from the given scale to 512x512 and down to 32x32 and then zoom it again to 
@@ -119,11 +149,6 @@ Vary the gray level resolution of your image from 8-bit to a 1-bit image in step
 how many number of bits or provide a selection from a drop-down menu.
 '''
 
-# In case of local histogram equalization, ask the user for the resolution of the square mask to be used.
-
-def histogram_equalization():
-
-    return
 
 # Function to perform bit plane slicing for image
 def reduce_gray_resolution(image, bits):
@@ -360,4 +385,3 @@ root.mainloop()
 # # closing all open windows
 # cv2.destroyAllWindows()
 # end comments
-
