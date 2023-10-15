@@ -16,15 +16,15 @@ Date: 10-09-2023
 
 # Importing Libraries
 import cv2
-import os
 
-import matplotlib.pyplot
 from matplotlib import pyplot as plt
-from matplotlib import image as mpimg
 import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
+import os
+import matplotlib.pyplot
+from matplotlib import image as mpimg
 
 global original_image, processed_image_label
 
@@ -105,6 +105,7 @@ def nearest_neighbor_interpolation(image, zoom_factor_height, zoom_factor_width)
 
     return zoomed_image
 
+
 # TODO: finish stubbed functions
 ''' START OF HW2 FILTERS CODE '''
 
@@ -122,41 +123,35 @@ def apply_median_filter(image, mask_size):
     return image
 
 
-# Function to apply a sharpening Laplacian filter
+# Function to apply a sharpening Laplacian filter, derivative based filter for edge detection?
+# highlight rapid intensity changes in an image, which correspond to edges.
+# in other words, highlights intensity discontinuities and de-emphasizes regions with slowly varying gray levels
 def apply_sharpening_laplacian_filter(image):
     # Implement a sharpening filter using Laplacian
     return image
 
 
-# Function to apply a high-boosting filter
+# Function to apply a high-boosting filter, a sharpening technique that employs Laplacian filter with modification.
+# obtained by adding the amplified Laplacian scaled by A to the original image.
+# A stands for amplification factor - determines then extent of sharpening or boosting applied to an image.
+# When A = 1, the high boost filter becomes the traditional Laplacian
 def apply_high_boost_filter(image, A):
     # Implement a high-boost filter by combining the original image with a sharpened version
     return image
 
 
-# Get user input for mask size (default: 3x3)
-mask_size = input("Enter mask size (e.g., '3' for a 3x3 mask): ")
-mask_size = int(mask_size) if mask_size.isdigit() else 3
-
-# Get user input for A value for high-boost filter
-A = input("Enter A value for high-boost filter: ")
-A = float(A) if A.replace('.', '', 1).isdigit() else 1.0
-
-# Apply the respective filters
-smoothed_image = apply_smoothing_filter(image, mask_size)
-median_filtered_image = apply_median_filter(image, mask_size)
-sharpened_image = apply_sharpening_laplacian_filter(image)
-high_boost_filtered_image = apply_high_boost_filter(image, A)
-
 ''' END OF FILTERS CODE'''
 
 
-# histogram equalization
+# histogram equalization, spatial domain
+# range is [0, L-1]
 # TODO: Test the following functions
 def local_histogram_equalization(image, mask_size):
     height, width = image.shape
     half_mask = mask_size // 2
     equalized_image = np.zeros((height, width), dtype=np.uint8)
+
+    # iterating through the pixels in the image using specified mask
     for i in range(half_mask, height - half_mask):
         for j in range(half_mask, width - half_mask):
             # Extract the local neighborhood
@@ -173,6 +168,8 @@ def local_histogram_equalization(image, mask_size):
             # Replace the center pixel with the equalized value
             equalized_image[i, j] = equalized_values[half_mask, half_mask]
 
+    # calculate and display histogram for local equalized image
+    calc_hist(equalized_image)
     return equalized_image
 
 
@@ -180,15 +177,17 @@ def histogram_equalization(image):
     # Compute histogram
     hist, bins = np.histogram(image.flatten(), bins=256, range=(0, 256), density=True)
 
-    # Compute the cumulative distribution function (CDF)
+    # Compute the cumulative distribution function (CDF) (Sk)
     cdf = hist.cumsum()
-    # normalize the CDF
+    # normalize the CDF, (probability distribution factor (nk/n))
     cdf_normalized = cdf / cdf.max()
 
     # Perform histogram equalization
     equalized_image = np.interp(image.flatten(), bins[:-1], cdf_normalized * 255)
     equalized_image = equalized_image.reshape(image.shape).astype(np.uint8)
 
+    # calculate anad display histogram for equalized image
+    calc_hist(equalized_image)
     return equalized_image
 
 
@@ -291,6 +290,77 @@ def process_bit_plane_slicing():
     root.update()
 
 
+def process_local_histogram():
+    global original_image, processed_image_label
+
+    # Open a file dialog to select an image
+    file_path = filedialog.askopenfilename()
+    if not file_path:
+        return
+
+    # Load the image using OpenCV
+    image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+
+    if image is None:
+        print("Error: Could not open or find the image.")
+        return
+
+    # get the mask value
+    mask_size = int(mask_size_entry.get())
+    local_he_image = local_histogram_equalization(image, mask_size)
+
+    # calculate histogram for original image
+    calc_hist(image)
+
+    # Convert images to PIL format for displaying in the GUI
+    original_image = ImageTk.PhotoImage(Image.fromarray(image))
+    processed_image = ImageTk.PhotoImage(Image.fromarray(local_he_image))
+
+    # Display the images in the GUI
+    original_image_label.config(image=original_image)
+    processed_image_label.config(image=processed_image)
+    original_image_label.image = original_image
+    processed_image_label.image = processed_image
+
+    # Update the GUI to show the processed image for each bit depth
+    root.update_idletasks()
+    root.update()
+
+
+def process_global_histogram():
+    global original_image, processed_image_label
+
+    # Open a file dialog to select an image
+    file_path = filedialog.askopenfilename()
+    if not file_path:
+        return
+
+    # Load the image using OpenCV
+    image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+
+    if image is None:
+        print("Error: Could not open or find the image.")
+        return
+
+    he_image = histogram_equalization(image)
+    # calculate histogram for original image
+    calc_hist(image)
+
+    # Convert images to PIL format for displaying in the GUI
+    original_image = ImageTk.PhotoImage(Image.fromarray(image))
+    processed_image = ImageTk.PhotoImage(Image.fromarray(he_image))
+
+    # Display the images in the GUI
+    original_image_label.config(image=original_image)
+    processed_image_label.config(image=processed_image)
+    original_image_label.image = original_image
+    processed_image_label.image = processed_image
+
+    # Update the GUI to show the processed image for each bit depth
+    root.update_idletasks()
+    root.update()
+
+
 # Function to open an image file and display it
 def process_image():
     global original_image, processed_image_label
@@ -325,12 +395,23 @@ def process_image():
         zoomed_image = linear_interpolation(image, zoom_factor_height)
         zoomed_image = linear_interpolation(zoomed_image, 1 / zoom_factor_height)
 
-    # TODO: testing histogram equalization, move into it's own function.
+    # TODO: testing histogram equalization and spatial filters, move into it's own function.
     calc_hist(zoomed_image)
-    eq_image = histogram_equalization(image)
+    eq_image = histogram_equalization(image)  # global histogram eq
 
-    # change this
-    mask_size = 8
+    # Get user input for mask size (default: 3x3)
+    mask_size = input("Enter mask size (e.g., '3' for a 3x3 mask): ")
+    mask_size = int(mask_size) if mask_size.isdigit() else 3
+
+    # Get user input for A value for high-boost filter
+    A = input("Enter A value for high-boost filter: ")
+    A = float(A) if A.replace('.', '', 1).isdigit() else 1.0
+
+    # Apply the respective filters
+    # smoothed_image = apply_smoothing_filter(image, mask_size)
+    # median_filtered_image = apply_median_filter(image, mask_size)
+    # sharpened_image = apply_sharpening_laplacian_filter(image)
+    # high_boost_filtered_image = apply_high_boost_filter(image, A)
 
     # print(eq_image)
     display_label = tk.Label(root, text=f"Local Equalization (Mask Size: {mask_size}x{mask_size})")
@@ -395,6 +476,27 @@ bits_label.pack(anchor=tk.W)
 
 bits_menu = tk.OptionMenu(root, bits_var, *["1", "2", "3", "4", "5", "6", "7", "8"])
 bits_menu.pack(anchor=tk.W)
+
+# Create buttons to process image with local or global histogram equalization
+local_histogram_button = tk.Button(root, text="Local Histogram Equalization", command=process_local_histogram)
+local_histogram_button.pack(pady=10)
+
+global_histogram_button = tk.Button(root, text="Global Histogram Equalization", command=process_global_histogram)
+global_histogram_button.pack(pady=10)
+
+# Create an input box for a specified mask size
+mask_label = tk.Label(root, text="Specify Mask Size (for local HE and spatial filters):")
+mask_label.pack(anchor=tk.W)
+
+mask_size_entry = tk.Entry(root)
+mask_size_entry.pack(anchor=tk.W)
+
+# Create labels to display histograms
+# local_histogram_label = tk.Label(root, text="Local Histogram")
+# local_histogram_label.pack(side=tk.LEFT, padx=10, pady=10)
+
+# global_histogram_label = tk.Label(root, text="Global Histogram")
+# global_histogram_label.pack(side=tk.RIGHT, padx=10, pady=10)
 
 # Create labels to display the original and processed images
 original_image_label = tk.Label(root, text="Original Image")
