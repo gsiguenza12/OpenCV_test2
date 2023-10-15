@@ -17,6 +17,8 @@ Date: 10-09-2023
 # Importing Libraries
 import cv2
 import os
+
+import matplotlib.pyplot
 from matplotlib import pyplot as plt
 from matplotlib import image as mpimg
 import numpy as np
@@ -103,35 +105,105 @@ def nearest_neighbor_interpolation(image, zoom_factor_height, zoom_factor_width)
 
     return zoomed_image
 
-
-def compute_histogram(image, num_bins=256, intensity_range=(0, 256)):
-    # flattened 1D array
-    f_image = image.flatten()
-    histogram, _ = np.histogram(f_image, bins=num_bins, range=intensity_range)
-    return histogram
+# TODO: finish stubbed functions
+''' START OF HW2 FILTERS CODE '''
 
 
-def cumulate_histogram(histogram):
-    cumulative_histogram = np.csum(histogram)
-    return cumulative_histogram
+# Function to apply a smoothing filter
+def apply_smoothing_filter(image, mask_size):
+    # Implement a smoothing filter logic using convolution with a suitable mask
+
+    return image
 
 
-# In case of local histogram equalization, ask the user for the resolution of the square mask to be used.
-def histogram_equalization(image, mask):
+# Function to apply a median filter
+def apply_median_filter(image, mask_size):
+    # Implement a median filter logic using the median of pixel values in the neighborhood
+    return image
+
+
+# Function to apply a sharpening Laplacian filter
+def apply_sharpening_laplacian_filter(image):
+    # Implement a sharpening filter using Laplacian
+    return image
+
+
+# Function to apply a high-boosting filter
+def apply_high_boost_filter(image, A):
+    # Implement a high-boost filter by combining the original image with a sharpened version
+    return image
+
+
+# Get user input for mask size (default: 3x3)
+mask_size = input("Enter mask size (e.g., '3' for a 3x3 mask): ")
+mask_size = int(mask_size) if mask_size.isdigit() else 3
+
+# Get user input for A value for high-boost filter
+A = input("Enter A value for high-boost filter: ")
+A = float(A) if A.replace('.', '', 1).isdigit() else 1.0
+
+# Apply the respective filters
+smoothed_image = apply_smoothing_filter(image, mask_size)
+median_filtered_image = apply_median_filter(image, mask_size)
+sharpened_image = apply_sharpening_laplacian_filter(image)
+high_boost_filtered_image = apply_high_boost_filter(image, A)
+
+''' END OF FILTERS CODE'''
+
+
+# histogram equalization
+# TODO: Test the following functions
+def local_histogram_equalization(image, mask_size):
     height, width = image.shape
-    eq_image = np.zeros_like(image)
+    half_mask = mask_size // 2
+    equalized_image = np.zeros((height, width), dtype=np.uint8)
+    for i in range(half_mask, height - half_mask):
+        for j in range(half_mask, width - half_mask):
+            # Extract the local neighborhood
+            local_region = image[i - half_mask:i + half_mask + 1, j - half_mask:j + half_mask + 1]
 
-    for i in range(0, height, mask):
-        for j in range(0, width, mask):
-            # local block
-            block = image[i:i + mask, j:j + mask]
-            # compute histogram
-            histogram = compute_histogram(block)
-            c_histogram = cumulate_histogram(histogram)
+            # Compute histogram and CDF for the local neighborhood
+            hist, bins = np.histogram(local_region.flatten(), bins=256, range=(0, 256), density=True)
+            cdf = hist.cumsum()
 
-            equalized_block = ((c_histogram[block] - c_histogram.min()) / (block.size - c_histogram.min()) * 255).astype(np.uint8)
-            eq_image[i:i+mask, j:j+mask] = equalized_block
-    return eq_image
+            # Perform histogram equalization for the local neighborhood
+            equalized_values = np.interp(local_region.flatten(), bins[:-1], cdf * 255)
+            equalized_values = equalized_values.reshape(local_region.shape).astype(np.uint8)
+
+            # Replace the center pixel with the equalized value
+            equalized_image[i, j] = equalized_values[half_mask, half_mask]
+
+    return equalized_image
+
+
+def histogram_equalization(image):
+    # Compute histogram
+    hist, bins = np.histogram(image.flatten(), bins=256, range=(0, 256), density=True)
+
+    # Compute the cumulative distribution function (CDF)
+    cdf = hist.cumsum()
+    # normalize the CDF
+    cdf_normalized = cdf / cdf.max()
+
+    # Perform histogram equalization
+    equalized_image = np.interp(image.flatten(), bins[:-1], cdf_normalized * 255)
+    equalized_image = equalized_image.reshape(image.shape).astype(np.uint8)
+
+    return equalized_image
+
+
+def calc_hist(image):
+    # Flatten the image to 1D array of pixel intensities
+    pixels = image.flatten()
+
+    # Calculate histogram
+    h, bins, _ = plt.hist(pixels, bins=256, range=(0, 256))
+
+    # Display the histogram
+    plt.xlabel('Pixel Intensity')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Grayscale Image')
+    plt.show()
 
 
 '''
@@ -175,6 +247,8 @@ def reduce_gray_resolution(image, bits):
     # return Image.fromarray(quantized_img)
     return q_image
 
+
+# TODO: Fix this function
 
 # Function to open an image and process it using bit plane slicing
 def process_bit_plane_slicing():
@@ -220,31 +294,26 @@ def process_bit_plane_slicing():
 # Function to open an image file and display it
 def process_image():
     global original_image, processed_image_label
+
     # Open a file dialog to select an image
     file_path = filedialog.askopenfilename()
     if not file_path:
         return
 
     # Load the image using OpenCV
-    # image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-    # Display the original image
-    image = cv2.imread(file_path, 0)
+    image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
 
     if image is None:
         print("Error: Could not open or find the image.")
         return
+
     # Get the selected interpolation method
     interpolation_method = interpolation_var.get()
-
-    # Adjust the bit depth of the processed image
-    # max_val = 2 ** bit_depth - 1
-    # zoomed_image = (max_val * (zoomed_image / 255)).astype(np.uint8)
 
     # Define the zoom factor for height (downsampling to 32 pixels in height)
     zoom_factor_height = 32 / image.shape[0]  # Scaling factor for height
     zoom_factor_width = 32 / image.shape[1]  # Scaling factor for width
-    # img will be a numpy array of the above shape
-    print("image array = ", image)
+
     # Process the image based on the selected interpolation method
     if interpolation_method == "Nearest Neighbor":
         zoomed_image = nearest_neighbor_interpolation(image, zoom_factor_height, zoom_factor_width)
@@ -252,13 +321,24 @@ def process_image():
     elif interpolation_method == "Bilinear":
         zoomed_image = bilinear_interpolation(image, zoom_factor_height, zoom_factor_width)
         zoomed_image = bilinear_interpolation(zoomed_image, 1 / zoom_factor_height, 1 / zoom_factor_width)
-        # print(zoomed_image)
-        # print(zoomed_image.shape)
-
     elif interpolation_method == "Linear":
         zoomed_image = linear_interpolation(image, zoom_factor_height)
         zoomed_image = linear_interpolation(zoomed_image, 1 / zoom_factor_height)
-        print("zoomed_image shape:", zoomed_image.shape)
+
+    # TODO: testing histogram equalization, move into it's own function.
+    calc_hist(zoomed_image)
+    eq_image = histogram_equalization(image)
+
+    # change this
+    mask_size = 8
+
+    # print(eq_image)
+    display_label = tk.Label(root, text=f"Local Equalization (Mask Size: {mask_size}x{mask_size})")
+    display_label.pack(anchor=tk.W)
+    equalized_image_local_display = ImageTk.PhotoImage(Image.fromarray(eq_image))
+    display_label.config(image=equalized_image_local_display)
+    display_label.image = equalized_image_local_display
+
     # GUI
     # Define the zoom factor for width and height (downsampling to 32x32 pixels)
     # zoom_factor_width = 32 / image.shape[1]  # Scaling factor for width
@@ -325,63 +405,3 @@ processed_image_label.pack(side=tk.RIGHT, padx=10, pady=10)
 
 # Run the main event loop
 root.mainloop()
-
-# commented out here
-# # Display the original image
-# img = cv2.imread('Original_lena512.jpg', 0)
-#
-# # shape prints the tuple (height,weight,channels)
-# print("image shape = ", img.shape)
-#
-# # img will be a numpy array of the above shape
-# print("image array = ", img)
-#
-# # print(img) numpy array is already stored and called img
-# print("pixel at index (5,5): ", img[5][5])  # here we are retrieving the value at a specific index
-#
-# # inspecting img variable
-# # print("zoomed_image shape:", zoomed_image.shape)
-# # print("zoomed_image type:", type(zoomed_image))
-#
-# # display image
-# cv2.imshow("lena", img)
-#
-# # waits for user to press any key
-# # (this is necessary to avoid Python kernel form crashing)
-# cv2.waitKey(0)
-#
-# # closing all open windows
-# cv2.destroyAllWindows()
-#
-# # os.system("pause")
-#
-# print('Original Dimensions : ', img.shape)
-#
-# # scale_percent = 60  # percent of original size
-# # width = int(img.shape[1] * scale_percent / 100)
-# # height = int(img.shape[0] * scale_percent / 100)
-# # dim = (width, height)
-#
-# # resize image
-# # resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-#
-# # Define the zoom factor for width and height (downsampling to 32x32 pixels)
-# zoom_factor_width = 32 / img.shape[1]  # Scaling factor for width
-# zoom_factor_height = 32 / img.shape[0]  # Scaling factor for height
-#
-# resized = nearest_neighbor_interpolation(img, zoom_factor_height, zoom_factor_width)
-#
-# # display image
-# print('Resized Dimensions : ', resized.shape)
-# # cv2.imshow("lena resized", resized)
-#
-# resized = nearest_neighbor_interpolation(resized, 1 / zoom_factor_height, 1 / zoom_factor_width)
-#
-# cv2.imshow("lena resized", resized)
-# # waits for user to press any key
-# # (this is necessary to avoid Python kernel form crashing)
-# cv2.waitKey(0)
-#
-# # closing all open windows
-# cv2.destroyAllWindows()
-# end comments
