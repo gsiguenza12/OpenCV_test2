@@ -110,25 +110,154 @@ def nearest_neighbor_interpolation(image, zoom_factor_height, zoom_factor_width)
 ''' START OF HW2 FILTERS CODE '''
 
 
-# Function to apply a smoothing filter
+# TODO: clean up this function
+# Function to apply a smoothing filter, (mean filter?)
 def apply_smoothing_filter(image, mask_size):
     # Implement a smoothing filter logic using convolution with a suitable mask
+    """
 
-    return image
+    :param image:
+    :param mask_size:
+    :return:
+
+    pseudocode:
+
+    for each image row in input image:
+    for each pixel in image row:
+
+        set accumulator to zero
+
+        for each kernel row in kernel:
+            for each element in kernel row:
+
+                if element position  corresponding* to pixel position then
+                    multiply element value  corresponding* to pixel value
+                    add result to accumulator
+                endif
+
+         set output image pixel to accumulator
+    """
+    # Create a mask of ones with the specified size
+    mask = np.ones((mask_size, mask_size), np.float32) / (mask_size * mask_size)
+
+    # Apply convolution using the filter2D function from OpenCV
+    # smoothed_image = cv2.filter2D(image, -1, mask)
+
+    # Get dimensions of the image and kernel
+    image_height, image_width = image.shape
+    kernel_height, kernel_width = Image.shape
+
+    # Initialize an output image
+    output_image = np.zeros_like(image)
+
+    # Flip the kernel (180-degree rotation)
+    kernel = np.flipud(np.fliplr(image))
+
+    # Iterate through the image
+    for i in range(image_height):
+        for j in range(image_width):
+            # Extract the region of interest from the image
+            roi = image[i:i + kernel_height, j:j + kernel_width]
+
+            # Ensure the ROI and kernel have the same dimensions
+            if roi.shape == kernel.shape:
+                output_image[i, j] = np.sum(roi * kernel)
+
+    return output_image
 
 
-# Function to apply a median filter
+# DELETE THIS CODE WHEN FUNCTION IS FINISHED, example of how to run function in main
+# # Load an example image
+# image_path = "path/to/your/image.jpg"
+# image = mpimg.imread(image_path)
+#
+# # Convert the image to grayscale (assuming it's a color image)
+# gray_image = np.mean(image, axis=2)
+#
+# # Define a simple 3x3 mean filter kernel
+# kernel = np.ones((3, 3)) / 9
+#
+# # Apply convolution manually
+# smoothed_image_manual = convolve2d_manual(gray_image, kernel)
+#
+# # Display the original and smoothed images
+# plt.figure(figsize=(10, 5))
+# plt.subplot(1, 2, 1)
+# plt.title('Original Image')
+# plt.imshow(gray_image, cmap='gray')
+# plt.axis('off')
+#
+# plt.subplot(1, 2, 2)
+# plt.title('Smoothed Image (Manual Convolution)')
+# plt.imshow(smoothed_image_manual, cmap='gray')
+# plt.axis('off')
+#
+# plt.show()
+
+# return smoothed_image
+
+
+# Function to apply a median filter, only removes noise as opposed to mean filter which smooths out
+# the variations in the data. Useful for removing salt and pepper noise.
 def apply_median_filter(image, mask_size):
     # Implement a median filter logic using the median of pixel values in the neighborhood
+
+    # zeros must be padded around the row edge and the column edge.
+
+    # using the specified kernel size, list the pixel values covered by the kernel
+    # determine median level, if the kernel covers an even number of pixels, the avg of two median values is used.
+
+    # slide the kernel mask until all the pixels have been iterated through.
     return image
+
+
+def generate_laplacian_kernel(resolution):
+    # Ensure the resolution is odd
+    if resolution % 2 == 0:
+        resolution += 1
+
+    # Generate the Laplacian kernel
+    laplacian_kernel = np.ones((resolution, resolution), dtype=np.float32)
+    center = resolution // 2
+    laplacian_kernel[center, center] = -resolution * resolution + 1
+
+    return laplacian_kernel
 
 
 # Function to apply a sharpening Laplacian filter, derivative based filter for edge detection?
 # highlight rapid intensity changes in an image, which correspond to edges.
 # in other words, highlights intensity discontinuities and de-emphasizes regions with slowly varying gray levels
-def apply_sharpening_laplacian_filter(image):
+def apply_sharpening_laplacian_filter(image, mask):
     # Implement a sharpening filter using Laplacian
-    return image
+    # Generate the Laplacian kernel
+    laplacian_kernel = generate_laplacian_kernel(mask)
+
+    # Pad the image to handle the convolution at image boundaries
+    padded_image = np.pad(image, ((1, 1), (1, 1)), mode='constant')
+
+    # Get the dimensions of the image and kernel
+    rows, cols = image.shape
+    krows, kcols = laplacian_kernel.shape
+
+    # Initialize an output image
+    sharpened_image = np.zeros_like(image)
+
+    # Perform convolution (manually)
+    for i in range(rows):
+        for j in range(cols):
+            # Extract the region of interest (ROI)
+            roi = padded_image[i:i + krows, j:j + kcols]
+            # Perform element-wise multiplication and sum to get the convolved value
+            conv_value = np.sum(roi * laplacian_kernel)
+            sharpened_image[i, j] = image[i, j] - conv_value
+
+    # Ensure pixel values are within [0, 255] range
+    sharpened_image = np.clip(sharpened_image, 0, 255)
+
+    # Convert the image to uint8 data type
+    sharpened_image = sharpened_image.astype(np.uint8)
+
+    return sharpened_image
 
 
 # Function to apply a high-boosting filter, a sharpening technique that employs Laplacian filter with modification.
@@ -137,7 +266,19 @@ def apply_sharpening_laplacian_filter(image):
 # When A = 1, the high boost filter becomes the traditional Laplacian
 def apply_high_boost_filter(image, A):
     # Implement a high-boost filter by combining the original image with a sharpened version
-    return image
+
+    # TODO: Replace with call to apply_sharpening_laplacian_filter
+    # Sharpen the original image using the Laplacian filter
+    laplacian = cv2.Laplacian(image, cv2.CV_64F)
+    sharpened_image = image - A * laplacian
+
+    # Ensure pixel values are within [0, 255] range
+    high_boost_filtered_image = np.clip(sharpened_image, 0, 255)
+
+    # Convert the image to uint8 data type
+    high_boost_filtered_image = high_boost_filtered_image.astype(np.uint8)
+
+    return high_boost_filtered_image
 
 
 ''' END OF FILTERS CODE'''
@@ -145,7 +286,7 @@ def apply_high_boost_filter(image, A):
 
 # histogram equalization, spatial domain
 # range is [0, L-1]
-# TODO: Test the following functions
+
 def local_histogram_equalization(image, mask_size):
     height, width = image.shape
     half_mask = mask_size // 2
@@ -433,6 +574,7 @@ def process_image():
     original_image = ImageTk.PhotoImage(Image.fromarray(image))
     processed_image = ImageTk.PhotoImage(Image.fromarray(zoomed_image))
 
+    # TODO: repetitive, break out into own function
     # Display the images in the GUI
     original_image_label.config(image=original_image)
     processed_image_label.config(image=processed_image)
@@ -440,6 +582,7 @@ def process_image():
     processed_image_label.image = processed_image
 
 
+# TODO: improve GUI, clean up code for readability
 # Create the main application window
 root = tk.Tk()
 root.title("Image Zooming with Linear Interpolation")
